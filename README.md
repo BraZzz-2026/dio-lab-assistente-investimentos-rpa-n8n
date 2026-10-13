@@ -81,7 +81,7 @@ Além dessas, você pode usar IAs generativas como **Gemini**, **Claude** ou **C
 
 Antes de começar, explore o repositório base que já contém a estrutura inicial:
 
-1. **Página de Clientes (`docs/index.html`):** Uma página HTML hospedada no GitHub Pages com uma lista de clientes fictícios contendo nome, email, saldo e perfil de investidor (Conservador, Moderado ou Arrojado). Disponível online [neste link]([https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n](https://github.com/BraZzz-2026/dio-lab-assistente-investimentos-rpa-n8n/tree/main/docs)).
+1. **Página de Clientes (`docs/index.html`):** Uma página HTML hospedada no GitHub Pages com uma lista de clientes fictícios contendo nome, email, saldo e perfil de investidor (Conservador, Moderado ou Arrojado). Disponível online [neste link]([https://github.com/BraZzz-2026/dio-lab-assistente-investimentos-rpa-n8n/tree/main/docs]).
 2. **Dados de Investimentos (`docs/data.csv`):** Um arquivo CSV também hospedado no GitHub Pages com opções de investimento organizadas por perfil. Disponível online [neste link](https://digitalinnovationone.github.io/dio-lab-assistente-investimentos-rpa-n8n/data.csv).
 3. **Script de RPA (`src/extrair_clientes.ipynb`):** Um notebook Python que acessa a página de clientes e extrai os dados da tabela usando BeautifulSoup.
 
