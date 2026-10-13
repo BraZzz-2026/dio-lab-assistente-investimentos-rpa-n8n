@@ -1,0 +1,275 @@
+{
+  "name": "My workflow 7",
+  "nodes": [
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1712,
+        112
+      ],
+      "id": "7865dc99-aca5-4a23-b94d-7b3befaa9ce1",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "clientes",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6731e9c3-a676-442d-843d-ab55cf455988",
+      "name": "Webhook - Dados Clientes",
+      "webhookId": "85d77874-e5d0-4ef8-b46f-f729dfbb43d3"
+    },
+    {
+      "parameters": {
+        "url": "https://raw.githubusercontent.com/BraZzz-2026/dio-lab-assistente-investimentos-rpa-n8n/main/docs/data.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        256,
+        0
+      ],
+      "id": "9bda0254-ecfc-4f62-a585-714042ec6ae0",
+      "name": "HTTP Request - Dados data.csv"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== 1) Entradas =====\nconst clientes = $('Webhook - Dados Clientes').first().json.body.clientes;  // enviados pelo Python\nconst csv = $input.first().json.data;                      // texto do data.csv\n\n// ===== 2) CSV -> lista de produtos =====\nconst linhas = csv.trim().split('\\n');\nconst cabecalho = linhas.shift().trim().split(',');\nconst produtos = linhas.map(l => {\n  const v = l.trim().split(',');\n  const p = Object.fromEntries(cabecalho.map((c, i) => [c.trim(), (v[i] ?? '').trim()]));\n  p.minimo = Number(p.minimo);\n  return p;\n});\n\n// ===== 3) Funções auxiliares =====\nfunction parseBRL(valor) {            // \"R$ 12.500,00\" -> 12500\n  if (!valor) return 0;\n  const s = String(valor)\n    .replace('R$', '')\n    .replace(/\\./g, '')\n    .replace(',', '.')\n    .replace(/[^\\d.]/g, '')\n    .trim();\n  const n = Number(s);\n  return Number.isFinite(n) ? n : 0;\n}\n\nfunction formatBRL(n) {               // 1000 -> \"R$ 1.000,00\"\n  return n.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })\n          .replace(/\\u00A0/g, ' ');\n}\n\nfunction escolherProduto(perfil, saldo) {\n  const doPerfil = produtos.filter(p => p.perfil === perfil);\n  if (doPerfil.length === 0) return { produto: null, motivo: 'perfil_nao_encontrado' };\n\n  const possiveis = doPerfil.filter(p => p.minimo <= saldo);\n  if (possiveis.length > 0) {\n    // maior mínimo que o saldo comporta (empate: o primeiro do CSV)\n    const melhor = possiveis.reduce((a, b) => (b.minimo > a.minimo ? b : a));\n    return { produto: melhor, motivo: 'saldo_ok' };\n  }\n  // saldo menor que todos os mínimos: sugere o de menor entrada\n  const menor = doPerfil.reduce((a, b) => (b.minimo < a.minimo ? b : a));\n  return { produto: menor, motivo: 'saldo_insuficiente' };\n}\n\n// ===== 4) Um item por cliente =====\nreturn clientes.map(c => {\n  const saldoNum = parseBRL(c.saldo);\n  const { produto, motivo } = escolherProduto(c.perfil, saldoNum);\n\n  let mensagem_base;\n  if (motivo === 'saldo_ok') {\n    mensagem_base = `${c.nome}, indo direto ao ponto: para o perfil ${c.perfil}, **${produto.produto}** (mínimo ${formatBRL(produto.minimo)}). Você tem ${formatBRL(saldoNum)}, então dá pra aplicar. Rentabilidade: ${produto.rentabilidade}.`;\n  } else if (motivo === 'saldo_insuficiente') {\n    mensagem_base = `${c.nome}, para o perfil ${c.perfil}, a opção de menor entrada é **${produto.produto}** (mínimo ${formatBRL(produto.minimo)}). Seu saldo atual é ${formatBRL(saldoNum)}, então ainda falta um pouco para aplicar. Rentabilidade: ${produto.rentabilidade}.`;\n  } else {\n    mensagem_base = `${c.nome}, não encontramos opções de investimento para o perfil ${c.perfil}.`;\n  }\n\n  return { json: {\n    email_to: String(c.email || '').trim(),\n    nome: c.nome,\n    perfil: c.perfil,\n    saldo_texto: c.saldo,\n    saldo_num: saldoNum,\n    recomendacao: produto ? {\n      perfil: produto.perfil,\n      produto: produto.produto,\n      minimo: produto.minimo,\n      rentabilidade: produto.rentabilidade\n    } : null,\n    motivo,\n    mensagem_base,\n    copy_rules: {\n      idioma: 'pt-BR',\n      tom: 'amigável e profissional',\n      tamanho: 'curto (4-6 linhas)',\n      evitar: ['promessas de ganho', 'garantias', 'linguagem agressiva']\n    }\n  }};\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        464,
+        0
+      ],
+      "id": "0cb7c951-77da-4607-913c-6aa8c72b7405",
+      "name": "Code in JavaScript - Junção"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "claude-haiku-5-5",
+          "mode": "list",
+          "cachedResultName": "claude-haiku-5-5"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=Você é um assistente de comunicação de uma instituição financeira. Escreva um e-mail curto em pt-BR para o cliente abaixo.\n\nDADOS DO CLIENTE\nNome: {{ $json.nome }}\nPerfil: {{ $json.perfil }}\nSaldo: {{ $json.saldo_texto }}\n\nRECOMENDAÇÃO\nProduto: {{ $json.recomendacao.produto }}\nValor mínimo: {{ $json.recomendacao.minimo }} reais\nRentabilidade: {{ $json.recomendacao.rentabilidade }}\nSituação do saldo: {{ $json.motivo }} (saldo_ok = o saldo cobre o mínimo; saldo_insuficiente = ainda não cobre)\n\nTEXTO BASE (use apenas os fatos daqui, sem inventar números):\n{{ $json.mensagem_base }}\n\nREGRAS\n- Tom: {{ $json.copy_rules.tom }}.\n- No máximo 5 linhas (cerca de 60 palavras), em texto simples: sem HTML, sem markdown e sem listas.\n- Não prometa ganhos, não dê garantias e não use linguagem agressiva.\n- Se a situação for saldo_insuficiente, não diga que dá para aplicar agora.\n- Cumprimente usando exatamente o primeiro nome informado acima e termine com uma despedida curta.\n\nFORMATO DA RESPOSTA\nResponda APENAS com JSON válido, sem cercas de código e sem texto antes ou depois:\n{\"subject\": \"assunto curto\", \"text_body\": \"corpo do e-mail\"}\nUse \\n para quebras de linha dentro do text_body."
+            }
+          ]
+        },
+        "options": {
+          "maxTokens": 2000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.anthropic",
+      "typeVersion": 1,
+      "position": [
+        672,
+        0
+      ],
+      "id": "258fe4fe-2dcd-491a-add9-bfbc6c2bf358",
+      "name": "Message a model - Criação Email Personalizado",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "anthropicApi": {
+          "id": "pL6rtoyRnynB6BcX",
+          "name": "Anthropic API - rikcardo88@"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const cliente = $('Code in JavaScript - Junção').item.json;\n\nconst bloco = ($json.content || []).find(b => b.type === 'text');\nlet bruto = bloco ? bloco.text : '';\n\n// pega só o trecho entre a primeira \"{\" e a última \"}\"\nconst ini = bruto.indexOf('{');\nconst fim = bruto.lastIndexOf('}');\nif (ini !== -1 && fim > ini) bruto = bruto.slice(ini, fim + 1);\n\nlet subject, text_body;\ntry {\n  const j = JSON.parse(bruto);\n  subject = j.subject;\n  text_body = j.text_body;\n} catch (e) {}\n\nreturn {\n  json: {\n    email_to: cliente.email_to,\n    nome: cliente.nome,\n    subject: subject || `Sugestão de investimento para o seu perfil ${cliente.perfil}`,\n    text_body: text_body || cliente.mensagem_base.replace(/\\*\\*/g, ''),\n    origem: text_body ? 'ia' : 'fallback',   \n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1024,
+        0
+      ],
+      "id": "d5b69277-74e1-4cc4-8d9e-0ec12bec04de",
+      "name": "Code in JavaScript1 - Separação Dados"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "ef224e0b-4128-4be0-a39d-f69a865eb3d2",
+              "leftValue": "={{ $json.email_to }}",
+              "rightValue": "^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        1232,
+        0
+      ],
+      "id": "07e9b1c2-f7d2-486d-959f-db725f0eb740",
+      "name": "If - Email Verificado"
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $json.email_to }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "text",
+        "message": "={{ $json.text_body }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1488,
+        112
+      ],
+      "id": "58e67867-abb1-4559-ac60-a3950ac8f5ad",
+      "name": "Send a message - Envio para cliente",
+      "webhookId": "a85c0bee-578b-4557-8492-7c272d54bdac",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "WeQ8FgjwCCnWz8TK",
+          "name": "Gmail account  - rikcardo88@"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Respond to Webhook": {
+      "main": [
+        []
+      ]
+    },
+    "Webhook - Dados Clientes": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - Dados data.csv",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request - Dados data.csv": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript - Junção",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript - Junção": {
+      "main": [
+        [
+          {
+            "node": "Message a model - Criação Email Personalizado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model - Criação Email Personalizado": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1 - Separação Dados",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1 - Separação Dados": {
+      "main": [
+        [
+          {
+            "node": "If - Email Verificado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If - Email Verificado": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Send a message - Envio para cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a message - Envio para cliente": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0f9aa366-b90e-40e7-b816-2bbc480829ef",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "8216a7ba5e7532c5ea5c0117b12706d3f7c20f90df1fb0f305058eb334fe3b80"
+  },
+  "nodeGroups": [],
+  "id": "XjYWUUce1x77tujW",
+  "tags": []
+}
